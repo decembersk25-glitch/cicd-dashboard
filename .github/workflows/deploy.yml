@@ -4,27 +4,45 @@ on:
   push:
     branches:
       - main
+      - '**'          # triggers on ALL branches
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build
+      - name: Build React app
         run: npm run build
+        env:
+          CI: false
+
+      - name: Verify build output
+        run: ls -la build/
 
       - name: Install Firebase CLI
-        run: npm install -g firebase-tools
+        run: npm install -g firebase-tools@latest
 
-      - name: Deploy to Firebase Hosting
-        run: firebase deploy --only hosting --token "$FIREBASE_TOKEN"
+      - name: Deploy to Firebase Hosting (main → production)
+        if: github.ref == 'refs/heads/main'
+        run: firebase deploy --only hosting --project github-93eb5 --token "$FIREBASE_TOKEN"
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Deploy to Firebase Preview Channel (other branches)
+        if: github.ref != 'refs/heads/main'
+        run: |
+          BRANCH_NAME="${GITHUB_REF##*/}"
+          firebase hosting:channel:deploy "$BRANCH_NAME" --project github-93eb5 --token "$FIREBASE_TOKEN"
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
