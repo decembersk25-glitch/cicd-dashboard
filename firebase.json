@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "github-93eb5",
     "public": "build",
     "ignore": [
       "firebase.json",
